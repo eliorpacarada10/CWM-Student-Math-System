@@ -1,0 +1,112 @@
+@page "/upload-exam"
+@rendermode InteractiveServer
+@using CWM.Adapters.Web.Models
+@using CWM.Adapters.Web.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject ExamGradingApiClient ApiClient
+
+<PageTitle>Upload Exam</PageTitle>
+
+<h1>Upload Exam</h1>
+
+<p>
+    Upload a teacher's aggregated exam XML -- one student's exam or a full mass-test batch use
+    the exact same file shape and the exact same endpoint.
+</p>
+
+<InputFile OnChange="OnFileSelectedAsync" accept=".xml" />
+
+@if (_isGrading)
+{
+    <p><em>Grading&hellip;</em></p>
+}
+
+@if (_errorMessage is not null)
+{
+    <p class="text-danger">@_errorMessage</p>
+}
+
+@if (_result is not null)
+{
+    <h2>Results for Teacher @_result.TeacherExternalId</h2>
+
+    @foreach (var student in _result.Students)
+    {
+        <h3>Student @student.StudentExternalId</h3>
+
+        @foreach (var exam in student.Exams)
+        {
+            <h4>Exam @exam.ExamExternalId &mdash; @exam.CorrectTasks / @exam.TotalTasks correct</h4>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Expression</th>
+                        <th>Claimed</th>
+                        <th>Computed</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var task in exam.Tasks)
+                    {
+                        <tr>
+                            <td>@task.TaskExternalId</td>
+                            <td>@task.Expression</td>
+                            <td>@task.ClaimedResult</td>
+                            <td>@(task.ComputedResult?.ToString() ?? "-")</td>
+                            <td>
+                                @if (task.GradingError is not null)
+                                {
+                                    <span class="text-warning">Ungradable: @task.GradingError</span>
+                                }
+                                else if (task.IsCorrect == true)
+                                {
+                                    <span class="text-success">Correct</span>
+                                }
+                                else
+                                {
+                                    <span class="text-danger">Incorrect</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+}
+
+@code {
+    private bool _isGrading;
+    private string? _errorMessage;
+    private GradeExamBatchResult? _result;
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _errorMessage = null;
+        _result = null;
+        _isGrading = true;
+
+        try
+        {
+            var file = e.File;
+            // Matches Api's [RequestSizeLimit(50_000_000)] on the grade endpoint.
+            await using var stream = file.OpenReadStream(maxAllowedSize: 50_000_000);
+            _result = await ApiClient.GradeAsync(stream, file.Name, file.ContentType, CancellationToken.None);
+        }
+        catch (ExamGradingApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            _isGrading = false;
+        }
+    }
+}

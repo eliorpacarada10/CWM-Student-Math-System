@@ -1,0 +1,116 @@
+@page "/student-analytics"
+@rendermode InteractiveServer
+@using CWM.Adapters.Web.Models
+@using CWM.Adapters.Web.Services
+@inject ExamGradingApiClient ApiClient
+
+<PageTitle>Student Analytics</PageTitle>
+
+<h1>Student Analytics</h1>
+
+<p>Review a student's graded exams and see which tasks were correct.</p>
+
+<div class="input-group mb-3" style="max-width: 400px;">
+    <input class="form-control" placeholder="Student Id" @bind="_studentExternalId" @bind:event="oninput" />
+    <button class="btn btn-primary" @onclick="SearchAsync" disabled="@_isSearching">Search</button>
+</div>
+
+@if (_isSearching)
+{
+    <p><em>Loading&hellip;</em></p>
+}
+
+@if (_errorMessage is not null)
+{
+    <p class="text-danger">@_errorMessage</p>
+}
+
+@if (_searched && _result is null && _errorMessage is null)
+{
+    <p>No student found with id "@_studentExternalId".</p>
+}
+
+@if (_result is not null)
+{
+    <h2>Student @_result.StudentExternalId</h2>
+
+    @foreach (var exam in _result.Exams)
+    {
+        <h3>Exam @exam.ExamExternalId &mdash; @exam.CorrectTasks / @exam.TotalTasks correct</h3>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Expression</th>
+                    <th>Claimed</th>
+                    <th>Computed</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var task in exam.Tasks)
+                {
+                    <tr>
+                        <td>@task.TaskExternalId</td>
+                        <td>@task.Expression</td>
+                        <td>@task.ClaimedResult</td>
+                        <td>@(task.ComputedResult?.ToString() ?? "-")</td>
+                        <td>
+                            @if (task.GradingError is not null)
+                            {
+                                <span class="text-warning">Ungradable</span>
+                            }
+                            else if (task.IsCorrect == true)
+                            {
+                                <span class="text-success">Correct</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger">Incorrect</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private string _studentExternalId = string.Empty;
+    private bool _isSearching;
+    private bool _searched;
+    private string? _errorMessage;
+    private StudentAnalyticsResult? _result;
+
+    private async Task SearchAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_studentExternalId))
+        {
+            return;
+        }
+
+        _errorMessage = null;
+        _result = null;
+        _isSearching = true;
+        _searched = true;
+
+        try
+        {
+            _result = await ApiClient.GetAnalyticsAsync(_studentExternalId, CancellationToken.None);
+        }
+        catch (ExamGradingApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            _isSearching = false;
+        }
+    }
+}

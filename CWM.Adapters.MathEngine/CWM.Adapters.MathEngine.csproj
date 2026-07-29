@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Referenced only to implement Application's IArithmeticEvaluator port.
+         No framework/NuGet dependencies: the evaluator itself stays fully portable. -->
+    <ProjectReference Include="..\CWM.Application\CWM.Application.csproj" />
+  </ItemGroup>
+
+</Project>

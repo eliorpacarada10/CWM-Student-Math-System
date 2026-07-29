@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Api is both the driving adapter (HTTP -> use cases) and the composition root
+         (Program.cs wires driven ports to these concrete adapter implementations). -->
+    <ProjectReference Include="..\CWM.Application\CWM.Application.csproj" />
+    <ProjectReference Include="..\CWM.Adapters.Persistence\CWM.Adapters.Persistence.csproj" />
+    <ProjectReference Include="..\CWM.Adapters.MathEngine\CWM.Adapters.MathEngine.csproj" />
+  </ItemGroup>
+
+</Project>
